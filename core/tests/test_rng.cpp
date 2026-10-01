@@ -46,7 +46,7 @@ TEST_CASE("RNG streams are independent and draws are in range", "[rng]")
     CHECK(r.nextInt(1) == 0u);
 }
 
-TEST_CASE("pickWeighted follows 03 §3", "[rng]")
+TEST_CASE("pickWeighted follows spec 03 section 3", "[rng]")
 {
     const double w[] = {1.0, 0.0, -2.0, 3.0};
     CHECK(pickWeighted(w, 4, 0.0f) == 0);
