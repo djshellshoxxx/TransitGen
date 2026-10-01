@@ -33,7 +33,7 @@ docs/spec/       this specification
 - Musical time is `double` **beats** (quarter notes). Positions inside a plan are **relative to fill start**.
 - Sample time is `int64_t`. Conversion uses the tempo of the current block: `samplesPerBeat = sampleRate * 60 / bpm`.
 - Bar length in beats = `numerator * 4.0 / denominator`.
-- **Grid snapping epsilon:** `1e-9` beats. A boundary at beat `b` falls in the block containing sample `ceil((b - blockStartBeat) * samplesPerBeat - 1e-9)`.
+- **Boundary epsilon:** a boundary at beat `b` renders at sample `ceil((b - blockStartBeat) * samplesPerBeat - 1e-6)` (epsilon in *samples*; `1e-9` is below double precision after ~90 s at 48 kHz — amendment A1 from 02 §12).
 - All event boundaries are rendered **at an exact sample index**, never rounded to a block edge.
 
 ## 3. FillPlan data model (C++)
@@ -142,7 +142,7 @@ public:
     const EngineTelemetry& telemetry() const;
 };
 ```
-The details are in [02-fill-engine.md](02-fill-engine.md).
+The details are in [02-fill-engine.md](02-fill-engine.md). `MidiEventView`, `TransportInfo` and `BlockTime` are defined in `core/include/transitgen/Transport.h`, and `GenSettings` in `FillPlan.h` (amendments A2/A3).
 
 ## 6. Parameters (host-automatable)
 IDs are permanent. Never rename one; deprecate it instead.
@@ -165,8 +165,8 @@ IDs are permanent. Never rename one; deprecate it instead.
 | `ending_len` | Ending Length | choice: 1/4, 1/2, 1, 2 beats | 1/2 | |
 | `seed` | Seed | int 1..99999 | 1 | automatable, so seeds can vary per section |
 | `variation` | Variation | choice: Fixed, Per Phrase | Per Phrase | Per Phrase: seed' = hash(seed, phraseIndex) |
-| `mix` | Mix | 0..100 % | 100 % | applies only during a fill |
-| `out_gain` | Output | −12..+12 dB | 0 dB | applies only during a fill (keeps idle bit-exact) |
+| `mix` | Mix | 0..100 % | 100 % | applies only during a fill; value frozen at fill start (A4) |
+| `out_gain` | Output | −12..+12 dB | 0 dB | applies only during a fill (keeps idle bit-exact); frozen at fill start (A4) |
 
 **Non-parameter state:** energy curve points, frozen plan (optional), seed history (32 entries), UI size, selected curve preset name.
 
