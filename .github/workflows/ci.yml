@@ -1,0 +1,94 @@
+# Build, test and validate TransitGen on all three desktop platforms (07 §4).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    env:
+      BUILD_DIR: build
+      ARTEFACTS: build/plugin/TransitGen_artefacts/Release
+      PLUGINVAL_ARGS: --strictness-level 10 --validate-in-process --skip-gui-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+            libxext-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl-dev libglu1-mesa-dev xvfb
+
+      # JUCE and Catch2 are pinned in CMake, so the downloads only change with those files.
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v4
+        with:
+          path: .deps
+          key: deps-${{ runner.os }}-${{ hashFiles('plugin/CMakeLists.txt', 'core/tests/CMakeLists.txt') }}
+
+      - name: ccache
+        if: runner.os != 'Windows'
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}
+
+      - name: Configure
+        shell: bash
+        run: |
+          launcher=""
+          if [ "$RUNNER_OS" != "Windows" ]; then launcher="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache"; fi
+          cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DTG_BUILD_PLUGIN=ON \
+            -DFETCHCONTENT_BASE_DIR="$GITHUB_WORKSPACE/.deps" $launcher
+
+      - name: Build
+        run: cmake --build ${{ env.BUILD_DIR }} --config Release --parallel 4
+
+      - name: Unit tests (core + plugin)
+        run: ctest --test-dir ${{ env.BUILD_DIR }} -C Release --output-on-failure
+
+      - name: pluginval (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Linux.zip
+          unzip -q pluginval.zip
+          xvfb-run -a ./pluginval $PLUGINVAL_ARGS "$ARTEFACTS/VST3/TransitGen.vst3"
+
+      - name: pluginval (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath .
+          ./pluginval.exe --strictness-level 10 --validate-in-process --skip-gui-tests "$env:ARTEFACTS/VST3/TransitGen.vst3"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: pluginval + auval (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          PV=pluginval.app/Contents/MacOS/pluginval
+          $PV $PLUGINVAL_ARGS "$ARTEFACTS/VST3/TransitGen.vst3"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "$ARTEFACTS/AU/TransitGen.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumf Trgn Djsx
+          $PV $PLUGINVAL_ARGS ~/Library/Audio/Plug-Ins/Components/TransitGen.component
+
+      - name: Upload plugins
+        uses: actions/upload-artifact@v4
+        with:
+          name: TransitGen-${{ matrix.os }}
+          path: |
+            ${{ env.ARTEFACTS }}/VST3
+            ${{ env.ARTEFACTS }}/AU
+            ${{ env.ARTEFACTS }}/Standalone
+          if-no-files-found: warn

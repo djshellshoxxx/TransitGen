@@ -1,0 +1,10 @@
+{"id":3,"name":"Trap","version":1,"grid":0.16666666666666666,"respectBars":true,
+ "segment":{"len":[0.3333333333333333,0.6666666666666666,1,2],"weight":[[[0,0.2],[1,1]],[[0,0.6],[1,0.8]],[[0,1],[1,0.4]],[[0,0.8],[1,0.1]]]},
+ "source":{"prob":{"Pass":[[0,0.6],[1,0.15]],"Stutter":[[0,0.3],[1,0.7]],"TapeStop":[[0,0.05],[1,0.1]],"Silence":[[0,0.05],[1,0.05]]}},
+ "stutter":{"slices":[0.3333333333333333,0.16666666666666666,0.08333333333333333],"sliceWeight":[[[0,1],[1,0.3]],[[0,0.5],[1,1]],[[0,0],[1,0.7]]],
+  "rollProb":[[0,0.15],[1,0.5]],"rollDiv":2,"rampMode":0,"pitchProb":[[0,0.1],[1,0.6]],"pitchSemis":12,"pitchDir":"down","pitchFromZero":true,"decayDb":-1.5},
+ "tape":{"curve":0.5},"silence":{"fadeMs":2},
+ "gate":{"prob":[[0,0],[1,0.15]],"rates":[3,6],"rateWeights":[1,1],"duty":[[0,0.6],[1,0.5]],"patterns":["1111111111111111","1101101101101101"],"attackMs":1,"releaseMs":8,"depth":1},
+ "crush":{"prob":[[0,0],[1,0.1]],"minBits":8,"maxDown":4,"mix":0.5},
+ "filter":{"type":"LowPass","from":1.0,"to":0.55,"res":0.15,"wobble":0},
+ "ending":{"type":"TapeStop","beats":1}}
