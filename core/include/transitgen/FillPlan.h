@@ -48,7 +48,7 @@ struct FillPlan {
     AutomationLane lanes[(int)AutoTarget::kCount];
 };
 
-/// Opaque to the engine; defined by 03 / 04.
+/// Opaque to the engine; defined in EnergyCurve.h / StyleTable.h (03, 04).
 struct EnergyCurve;
 struct StyleTable;
 
@@ -56,6 +56,7 @@ struct GenSettings {       // POD snapshot of everything generation depends on
     uint32_t seed;
     uint16_t styleId;
     double   lengthBeats;
+    double   beatsPerBar;  // from time signature: num * 4 / den (bar lines are measured from the fill end)
     float    intensity;    // 0..1
     float    density;      // 0..1 (0.5 = style default)
     float    pitchAmount;  // 0..1

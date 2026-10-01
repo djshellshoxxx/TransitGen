@@ -1,6 +1,6 @@
 # TransitGen Specification — 04 Genre Styles
 
-A style is a JSON file of rules the generator (03) follows. Factory styles live in `styles/*.json` and are compiled into the binary. They are parsed on the message thread into an immutable `StyleTable` (POD, published to the audio thread per 01 §7). User styles (v1.x) use the same format from the user folder.
+A style is a JSON file of rules the generator (03) follows. Factory styles live in `styles/NN-name.json` (NN = id, which fixes the load order) and are compiled into the binary: `core/cmake/EmbedStyles.cmake` generates a source file with each file as a string literal, so there is no runtime file I/O. They are parsed on the message thread into an immutable `StyleTable` (POD, published to the audio thread per 01 §7). User styles (v1.x) use the same format from the user folder.
 
 ## 1. Format
 
@@ -29,15 +29,21 @@ A style is a JSON file of rules the generator (03) follows. Factory styles live 
 | `silence.fadeMs` | 0–50 | |
 | `gate.prob`, `gate.duty` | T | |
 | `gate.rates`, `gate.rateWeights` | int[], float[] | steps per beat |
-| `gate.patterns` | string[] (16 chars of 0/1) | |
+| `gate.patterns` | string[] (1–8, 16 chars of 0/1) | character i = step i (bit i of the event's pattern), at least one `1` |
 | `gate.attackMs`, `gate.releaseMs`, `gate.depth` | float | |
 | `crush.prob` | T | |
 | `crush.minBits`, `crush.maxDown`, `crush.mix` | float | |
 | `filter.type` | "Off", "LowPass", "HighPass", "BandPass" | |
 | `filter.from`, `filter.to`, `filter.res`, `filter.wobble` | 0..1 | normalized lane values (Hz = 20·1000^v) |
-| `ending.type`, `ending.beats` | "None", "Silence", "TapeStop", "ReverseSwell", "Roll"; beats | |
+| `ending.type`, `ending.beats` | "None", "Silence", "TapeStop", "ReverseSwell", "Roll"; beats | `ending.beats` is used when the Ending param is "Style"; an override uses Ending Length (03 §5 step 2) |
 
 **Validation on load:** schema + range checks. An invalid user style is rejected with a message in the UI; a factory style failing validation is a build failure (CI test).
+- Strict JSON (no comments or trailing commas); unknown keys and duplicate keys are errors; every key in the table is required except individual `source.prob` entries.
+- `id`: integer, factory 1–99, user 100–65535, unique in the table. `name`: 1–31 bytes. `version`: integer ≥ 1.
+- `grid` ∈ [1/64, 4]; `segment.len` ∈ [1/64, 32]; `stutter.slices` ∈ [1/256, 8] (capture bound, 02 §4); `stutter.decayDb` ∈ [−12, 0]; `gate.rates` ⊂ {1,2,3,4,6,8} (≤ 6 entries) with as many `rateWeights` ≥ 0, not all 0; `attackMs`, `releaseMs` ∈ [0, 1000]; `crush.minBits` ∈ [1,16], `maxDown` ∈ [1,64]; `ending.beats` ∈ [1/64, 16].
+- Tables: 1–5 `[e, v]` pairs, e ∈ [0,1] strictly increasing. Weights (`segment.weight`, `source.prob`, `stutter.sliceWeight`) v ∈ [0, 1000]; probabilities (`rollProb`, `pitchProb`, `gate.prob`, `crush.prob`) v ∈ [0,1]; `gate.duty` v ∈ [0.05, 1]. Each weight family must have a positive sum at every energy (checked at all breakpoints and 0, 1).
+- Errors name the key path (`stutter.rollDiv: must be 2, 4 or 8`) or the position of a syntax error (`line 3, column 7: expected ':'`).
+- The in-memory `StyleTable` (`transitgen/StyleTable.h`) holds up to 64 styles; gate pattern strings are converted to 16-bit masks at load time.
 
 ## 2. Factory styles
 

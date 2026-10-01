@@ -24,7 +24,7 @@ constexpr uint32_t mixSeed(uint32_t seed, int64_t phraseIndex) noexcept
 }
 
 /// Segment bend: k in [-1,1] (clamped to +-0.99), x in [0,1]. k = 0 is linear,
-/// k > 0 pushes the shape late ("exp"), k < 0 early ("log").
+/// k > 0 rises early (fast start, concave), k < 0 rises late (slow start, convex).
 inline double bend(double x, double k) noexcept
 {
     if (k > 0.99) k = 0.99;

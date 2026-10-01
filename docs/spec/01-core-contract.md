@@ -93,7 +93,7 @@ struct FillPlan {
 | Pass | — | | | | | |
 | Stutter | sliceStartBeats | sliceEndBeats (roll target; = p0 for constant) | rampMode (0 stepped, 1 smooth) | pitchStartSemis (−24..24) | pitchEndSemis | decayDbPerRepeat (0..−12) |
 | Reverse | lengthBeats of audio reversed (≤ event length) | gainStartDb | gainEndDb | | | |
-| TapeStop | curve (−1 log .. 0 linear .. 1 exp) | endRate (0..1, usually 0) | | | | |
+| TapeStop | curve (−1 late .. 0 linear .. +1 early, see math.h `bend`) | endRate (0..1, usually 0) | | | | |
 | TapeStart | curve | startRate (0..1, usually 0) | | | | |
 | Silence | fadeOutMs (0 = hard) | | | | | |
 | Gate | stepsPerBeat (1,2,3,4,6,8) | duty (0.05..1) | pattern bits low 16 (as float-encoded int) | attackMs | releaseMs | depth (0..1) |

@@ -124,6 +124,7 @@ void FillScheduler::buildRequest(SchedAction& out, uint32_t seed, int64_t phrase
     r.gen.seed = seed;
     r.gen.styleId = s_.styleId;
     r.gen.lengthBeats = lengthBeats;
+    r.gen.beatsPerBar = bt_.barLen;
     r.gen.intensity = (s_.mode == TriggerMode::Midi && midiNote >= 0 && s_.midiVelocityToIntensity) ? velocity : s_.intensity;
     r.gen.density = s_.density;
     r.gen.pitchAmount = s_.pitchAmount;

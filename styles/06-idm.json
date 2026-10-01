@@ -1,0 +1,10 @@
+{"id":6,"name":"IDM","version":1,"grid":0.125,"respectBars":false,
+ "segment":{"len":[0.125,0.25,0.375,0.5,0.75],"weight":[[[0,0.2],[1,1]],[[0,0.6],[1,1]],[[0,0.6],[1,0.6]],[[0,1],[1,0.4]],[[0,0.8],[1,0.2]]]},
+ "source":{"prob":{"Pass":[[0,0.35],[1,0.1]],"Stutter":[[0,0.35],[1,0.5]],"Reverse":[[0,0.15],[1,0.15]],"TapeStop":[[0,0.05],[1,0.08]],"TapeStart":[[0,0.05],[1,0.07]],"Silence":[[0,0.05],[1,0.1]]}},
+ "stutter":{"slices":[0.25,0.125,0.0625,0.03125,0.015625],"sliceWeight":[[[0,1],[1,0.2]],[[0,0.8],[1,0.6]],[[0,0.4],[1,1]],[[0,0.1],[1,0.8]],[[0,0],[1,0.5]]],
+  "rollProb":[[0,0.3],[1,0.7]],"rollDiv":8,"rampMode":1,"pitchProb":[[0,0.2],[1,0.6]],"pitchSemis":12,"pitchDir":"both","pitchFromZero":false,"decayDb":-2},
+ "tape":{"curve":0.2},"silence":{"fadeMs":1},
+ "gate":{"prob":[[0,0.2],[1,0.5]],"rates":[3,4,6,8],"rateWeights":[1,1,1,1],"duty":[[0,0.6],[1,0.3]],"patterns":["1111111111111111","1001010010010100","1101011011010110"],"attackMs":0.5,"releaseMs":4,"depth":1},
+ "crush":{"prob":[[0,0.1],[1,0.4]],"minBits":4,"maxDown":12,"mix":0.8},
+ "filter":{"type":"BandPass","from":0.4,"to":0.7,"res":0.5,"wobble":0.15},
+ "ending":{"type":"Roll","beats":0.5}}

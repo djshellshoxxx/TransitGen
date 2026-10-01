@@ -93,7 +93,7 @@ At Start: `events` → sample bounds `[S(start), S(start+len))`, `N = S(lengthBe
 `R = min(S(p0), validSpan)`. Sample `j = f − E`: `j < R → w = x[E − 1 − j]·G(j)` (integer reads), `j ≥ R → w = 0`. `G` = linear-in-dB ramp `p1 → p2` over `Nev`, multiplied by `rc((R − j)/F_r)` over the last `F_r = min(F, R/2)` samples before exhaustion. At `E` the output mirrors the input around `E − 1`, which is value-continuous.
 
 ### 5.4 TapeStop / TapeStart
-Read head `rp` (double, fill-local). At `E`: `rp = E − kTapeInitialLag`. Per sample `u = (f − E)/Nev`, `s = bend(u, p0)` (math.h; `p0 ∈ [−1,1]`, −1 = fast early drop/"log", 0 linear, +1 late drop/"exp"):
+Read head `rp` (double, fill-local). At `E`: `rp = E − kTapeInitialLag`. Per sample `u = (f − E)/Nev`, `s = bend(u, p0)` (math.h; `p0 ∈ [−1,1]`, −1 = late drop, 0 linear, +1 = early drop):
 - TapeStop: `v = 1 − (1 − p1)·s`; TapeStart: `v = p1 + (1 − p1)·s`.
 - `w = rc(min(1, v/kTapeMuteRate))·h(rp)`, then `rp += v`. The gain reaches 0 at zero speed (no held DC sample, a full stop lands in silence) and the raised cosine removes the corner where the clamp hits 1.
 - Lag clamp: `if f − rp > maxLag: rp = f − maxLag`.

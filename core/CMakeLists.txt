@@ -1,3 +1,15 @@
+# Factory styles (styles/*.json) are embedded as generated source (04, 07 §2).
+file(GLOB TG_FACTORY_STYLES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/styles/*.json)
+list(SORT TG_FACTORY_STYLES)
+set(TG_FACTORY_STYLES_CPP ${CMAKE_CURRENT_BINARY_DIR}/generated/FactoryStyles.cpp)
+add_custom_command(
+    OUTPUT  ${TG_FACTORY_STYLES_CPP}
+    COMMAND ${CMAKE_COMMAND} -DOUT=${TG_FACTORY_STYLES_CPP} "-DINPUTS=${TG_FACTORY_STYLES}"
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedStyles.cmake
+    DEPENDS ${TG_FACTORY_STYLES} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedStyles.cmake
+    COMMENT "Embedding factory styles"
+    VERBATIM)
+
 add_library(transitgen_core STATIC
     src/FillPlan.cpp
     src/Transport.cpp
@@ -6,6 +18,11 @@ add_library(transitgen_core STATIC
     src/FillScheduler.cpp
     src/Engine.cpp
     src/TestPlanProvider.cpp
+    src/Json.cpp
+    src/StyleLoader.cpp
+    src/Generator.cpp
+    src/GeneratorPlanProvider.cpp
+    ${TG_FACTORY_STYLES_CPP}
 )
 target_include_directories(transitgen_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(transitgen_core PUBLIC cxx_std_20)
