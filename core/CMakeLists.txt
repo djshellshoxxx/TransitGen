@@ -29,8 +29,13 @@ target_compile_features(transitgen_core PUBLIC cxx_std_20)
 
 # Determinism: identical float results regardless of block size require no FMA
 # contraction and no fast-math (02 §8).
-set(TG_STRICT_FP_FLAGS -ffp-contract=off -fno-fast-math)
-set(TG_WARNING_FLAGS -Wall -Wextra -Werror -Wshadow -Wconversion -Wno-sign-conversion)
+if(MSVC)
+    set(TG_STRICT_FP_FLAGS /fp:precise)
+    set(TG_WARNING_FLAGS /W4 /permissive-)
+else()
+    set(TG_STRICT_FP_FLAGS -ffp-contract=off -fno-fast-math)
+    set(TG_WARNING_FLAGS -Wall -Wextra -Werror -Wshadow -Wconversion -Wno-sign-conversion)
+endif()
 target_compile_options(transitgen_core PRIVATE ${TG_STRICT_FP_FLAGS} ${TG_WARNING_FLAGS})
 target_compile_options(transitgen_core PUBLIC ${TG_STRICT_FP_FLAGS})
 

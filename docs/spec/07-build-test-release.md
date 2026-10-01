@@ -4,7 +4,7 @@
 | Item | Choice |
 |---|---|
 | Language | C++20 |
-| Build | CMake ≥ 3.25, Ninja |
+| Build | CMake ≥ 3.28, Ninja |
 | Framework | JUCE 8.x pinned to an exact tag via `FetchContent` (or a git submodule at `external/JUCE`) |
 | Tests | Catch2 v3 (FetchContent) |
 | Compilers | MSVC 2022 (Windows), Apple Clang / Xcode 15+ (macOS), GCC 13 / Clang 17+ (Linux) |
@@ -29,7 +29,7 @@ Compiler flags for `core/`: `-ffp-contract=off` (MSVC: `/fp:precise`), never fas
 | Unit | core DSP, generator, transport, styles (02 §test plan, 03 §8, 06 §5) | CI, every push |
 | Sanitizers | ASan + UBSan build of the unit tests (Linux, macOS) | CI |
 | Determinism | golden plans on all 3 OSes; block-size invariance | CI |
-| Plugin validation | **pluginval** strictness 10 on VST3 + AU; `auval -v aufx Trgn Djsx` on macOS | CI |
+| Plugin validation | **pluginval** strictness 10 on VST3 + AU; `auval -v aumf Trgn Djsx` (MIDI-input effect type) on macOS | CI |
 | Real-time safety | allocation counter in tests; optional RADSan/`-fsanitize=realtime` build (Clang 20+) | CI (nightly) |
 | Performance | benchmark: engine at 48 kHz stereo, 64-sample blocks, densest style. Fail if > 2 % of one core on the CI runner baseline. | CI |
 | Manual DAW matrix | Ableton Live 12, FL Studio, Logic Pro, Bitwig, Reaper, Cubase, Studio One. Checklist: load, automate every param, Auto-Phrase timing, loop region, tempo automation, offline bounce = real-time playback (null test), state save/reload, resize UI, mono track | each release candidate |

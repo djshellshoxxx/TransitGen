@@ -152,7 +152,7 @@ IDs are permanent. Never rename one; deprecate it instead.
 | `mode` | Trigger Mode | choice: Auto-Phrase, Automation, MIDI | Auto-Phrase | |
 | `phrase_bars` | Phrase Length | choice: 4, 8, 16, 32 bars | 8 | Auto-Phrase |
 | `phrase_offset` | Phrase Offset | int 0..31 bars | 0 | shifts the phrase grid |
-| `fill_len` | Fill Length | choice: 1/4, 1/2, 1, 2, 3, 4 beats, 2, 4, 8 bars | 1 bar | |
+| `fill_len` | Fill Length | choice: 1/4, 1/2, 1, 2, 3, 4 beats, 2, 4, 8 bars | 4 beats (= 1 bar in 4/4) | |
 | `trigger` | Fill Trigger | bool | off | Automation mode, rising edge |
 | `quantize` | Trigger Quantize | choice: Off, 1/16, 1/8, 1/4, 1/2, Bar | 1/4 | MIDI + Automation modes |
 | `style` | Style | choice (factory + user index) | Dubstep | |

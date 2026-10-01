@@ -18,14 +18,22 @@ struct Value {
     bool   isInteger = false;      // written without fraction or exponent
     std::string str;
     std::vector<Value> arr;
-    std::vector<std::pair<std::string, Value>> obj;   // in document order
+    struct Member;                 // {key, value}; defined below so Value is complete (Clang + libstdc++)
+    std::vector<Member> obj;       // in document order
 
-    const Value* get(std::string_view key) const noexcept
-    {
-        for (const auto& kv : obj) if (kv.first == key) return &kv.second;
-        return nullptr;
-    }
+    const Value* get(std::string_view key) const noexcept;
 };
+
+struct Value::Member {
+    std::string first;
+    Value       second;
+};
+
+inline const Value* Value::get(std::string_view key) const noexcept
+{
+    for (const auto& kv : obj) if (kv.first == key) return &kv.second;
+    return nullptr;
+}
 
 /// Parses `text` into `out`. On failure returns false and sets `error` ("line L, column C: ...").
 bool parse(std::string_view text, Value& out, std::string& error);

@@ -80,7 +80,7 @@ private:
             if (peek() != ':') return fail("expected ':'");
             ++pos_;
             skipWs();
-            v.obj.emplace_back(std::move(key), Value{});
+            v.obj.push_back(Value::Member{std::move(key), Value{}});
             if (!value(v.obj.back().second, depth + 1)) return false;
             skipWs();
             if (peek() == ',') { ++pos_; continue; }
