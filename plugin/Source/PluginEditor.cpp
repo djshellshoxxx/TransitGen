@@ -67,7 +67,7 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     for (int i = 0; i < static_cast<int>(tg::CurvePreset::kCount); ++i) curveBox_.addItem(tg::kCurvePresetNames[i], i + 1);
     curveBox_.setTextWhenNothingSelected("Custom curve");
     curveBox_.onChange = [this] {
-        if (const int id = curveBox_.getSelectedId(); id > 0) proc_.setCurvePreset(id - 1);
+        if (const int id = curveBox_.getSelectedId(); id > 0) curveEditor_.setPreset(id - 1);
     };
     rerollButton_.onClick = [this] { proc_.rerollSeed(); };
     lockButton_.onClick = [this] { proc_.setLocked(lockButton_.getToggleState()); };
@@ -85,8 +85,12 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
             "use your DAW's transport and host bypass controls.",
             "Close", nullptr);
     };
+    undoButton_.onClick = [this] { curveEditor_.undo(); };
+    redoButton_.onClick = [this] { curveEditor_.redo(); };
+    undoButton_.setTooltip("Undo the last curve edit or preset change");
+    redoButton_.setTooltip("Redo the last undone curve edit or preset change");
     status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &helpButton_, &outputMeter_, &status_, &curveEditor_ })
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &undoButton_, &redoButton_, &helpButton_, &outputMeter_, &status_, &curveEditor_ })
         addAndMakeVisible(*c);
 
     setSize(kWidth, 600);
@@ -118,6 +122,10 @@ void TransitGenEditor::resized()
     buttons.removeFromLeft(8);
     previewButton_.setBounds(buttons.removeFromLeft(90));
     buttons.removeFromLeft(12);
+    undoButton_.setBounds(buttons.removeFromLeft(54));
+    buttons.removeFromLeft(4);
+    redoButton_.setBounds(buttons.removeFromLeft(54));
+    buttons.removeFromLeft(8);
     outputMeter_.setBounds(buttons.removeFromRight(220));
     helpButton_.setBounds(buttons.removeFromRight(64));
     status_.setBounds(top.reduced(0, 4));
@@ -140,6 +148,8 @@ void TransitGenEditor::timerCallback()
     proc_.collectRetired();
     curveEditor_.repaint();
     outputMeter_.setPeak(proc_.consumeOutputPeak());
+    undoButton_.setEnabled(curveEditor_.canUndo());
+    redoButton_.setEnabled(curveEditor_.canRedo());
     status_.setText(statusText(proc_), juce::dontSendNotification);
 
     const bool locked = proc_.isLocked();

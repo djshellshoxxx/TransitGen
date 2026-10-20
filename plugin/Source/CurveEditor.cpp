@@ -11,12 +11,70 @@ namespace {
 constexpr float kInset = 16.0f;
 constexpr float kPointRadius = 6.0f;
 constexpr float kMinimumPointGap = 0.005f;
+constexpr size_t kHistoryLimit = 64;
+
+bool curvesEqual(const tg::EnergyCurve& a, const tg::EnergyCurve& b)
+{
+    if (a.numPoints != b.numPoints) return false;
+    for (int i = 0; i < a.numPoints; ++i)
+        if (a.points[i].t != b.points[i].t || a.points[i].value != b.points[i].value || a.points[i].curve != b.points[i].curve)
+            return false;
+    return true;
+}
 }
 
 CurveEditor::CurveEditor(TransitGenProcessor& processor) : processor_(processor)
 {
     setName("Energy curve editor");
     setTooltip("Drag points to shape fill energy. Double-click a point to remove it; Alt-drag a segment to bend it; click to add a point.");
+}
+
+void CurveEditor::remember(const tg::EnergyCurve& curve)
+{
+    undo_.push_back(curve);
+    if (undo_.size() > kHistoryLimit) undo_.erase(undo_.begin());
+    redo_.clear();
+}
+
+void CurveEditor::restore(const tg::EnergyCurve& curve)
+{
+    for (int i = 0; i < static_cast<int>(tg::CurvePreset::kCount); ++i)
+        if (curvesEqual(curve, tg::curvePreset(static_cast<tg::CurvePreset>(i)))) {
+            processor_.setCurvePreset(i);
+            repaint();
+            return;
+        }
+    processor_.setEnergyCurve(curve);
+    repaint();
+}
+
+void CurveEditor::setPreset(int index)
+{
+    if (index < 0 || index >= static_cast<int>(tg::CurvePreset::kCount)) return;
+    const tg::EnergyCurve current = processor_.energyCurve();
+    const tg::EnergyCurve next = tg::curvePreset(static_cast<tg::CurvePreset>(index));
+    if (curvesEqual(current, next)) return;
+    remember(current);
+    processor_.setCurvePreset(index);
+    repaint();
+}
+
+void CurveEditor::undo()
+{
+    if (undo_.empty()) return;
+    redo_.push_back(processor_.energyCurve());
+    const tg::EnergyCurve previous = undo_.back();
+    undo_.pop_back();
+    restore(previous);
+}
+
+void CurveEditor::redo()
+{
+    if (redo_.empty()) return;
+    undo_.push_back(processor_.energyCurve());
+    const tg::EnergyCurve next = redo_.back();
+    redo_.pop_back();
+    restore(next);
 }
 
 juce::Point<float> CurveEditor::pointToPosition(const tg::CurvePoint& p) const
@@ -176,6 +234,8 @@ void CurveEditor::insertPoint(juce::Point<float> position)
     curve.points[index] = { t, normalized.y, 0.0f };
     curve.points[index - 1].curve = 0.0f;
     ++curve.numPoints;
+    remember(dragStart_);
+    gestureRecorded_ = true;
     processor_.setEnergyCurve(curve);
     repaint();
 }
@@ -185,6 +245,7 @@ void CurveEditor::deletePoint(juce::Point<float> position)
     tg::EnergyCurve curve = processor_.energyCurve();
     const int index = hitPoint(position);
     if (index <= 0 || index >= curve.numPoints - 1) return;
+    remember(curve);
     for (int i = index; i + 1 < curve.numPoints; ++i) curve.points[i] = curve.points[i + 1];
     --curve.numPoints;
     processor_.setEnergyCurve(curve);
@@ -193,6 +254,7 @@ void CurveEditor::deletePoint(juce::Point<float> position)
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
+    gestureRecorded_ = false;
     dragStart_ = processor_.energyCurve();
     draggedPoint_ = hitPoint(event.position);
     bentSegment_ = -1;
@@ -215,6 +277,10 @@ void CurveEditor::mouseDown(const juce::MouseEvent& event)
 void CurveEditor::mouseDrag(const juce::MouseEvent& event)
 {
     tg::EnergyCurve curve = dragStart_;
+    if (!gestureRecorded_ && (draggedPoint_ >= 0 || bentSegment_ >= 0)) {
+        remember(dragStart_);
+        gestureRecorded_ = true;
+    }
     if (draggedPoint_ >= 0) {
         const auto normalized = positionToCurve(event.position);
         tg::CurvePoint& point = curve.points[draggedPoint_];
@@ -237,6 +303,8 @@ void CurveEditor::mouseDrag(const juce::MouseEvent& event)
         repaint();
     }
 }
+
+void CurveEditor::mouseUp(const juce::MouseEvent&) { gestureRecorded_ = false; }
 
 void CurveEditor::mouseDoubleClick(const juce::MouseEvent& event)
 {

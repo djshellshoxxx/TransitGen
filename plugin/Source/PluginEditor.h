@@ -51,6 +51,8 @@ private:
     juce::TextButton                       rerollButton_{ "Re-roll" };
     juce::ToggleButton                     lockButton_{ "Lock" };
     juce::TextButton                       previewButton_{ "Preview" };
+    juce::TextButton                       undoButton_{ "Undo" };
+    juce::TextButton                       redoButton_{ "Redo" };
     juce::TextButton                       helpButton_{ "Help" };
     OutputMeter                            outputMeter_;
     juce::Label                            status_;
