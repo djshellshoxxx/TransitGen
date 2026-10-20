@@ -42,6 +42,8 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
         if (param == nullptr) continue;
         auto row = std::make_unique<ParamRow>();
         row->label.setText(param->getName(64), juce::dontSendNotification);
+        row->label.setName(param->getName(64));
+        row->label.setTooltip(param->getName(64));
         row->label.setJustificationType(juce::Justification::centredRight);
         if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(param)) {
             auto box = std::make_unique<juce::ComboBox>();
@@ -59,18 +61,25 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
             row->slider = std::make_unique<juce::SliderParameterAttachment>(*param, *slider);
             row->control = std::move(slider);
         }
+        row->control->setName(param->getName(64));
+        if (auto* tooltip = dynamic_cast<juce::SettableTooltipClient*>(row->control.get()))
+            tooltip->setTooltip(param->getName(64));
         addAndMakeVisible(row->label);
         addAndMakeVisible(*row->control);
         rows_.push_back(std::move(row));
     }
 
     for (int i = 0; i < static_cast<int>(tg::CurvePreset::kCount); ++i) curveBox_.addItem(tg::kCurvePresetNames[i], i + 1);
+    curveBox_.setName("Energy curve preset");
+    curveBox_.setTooltip("Choose a factory energy curve; edits can be undone and redone");
     curveBox_.setTextWhenNothingSelected("Custom curve");
     curveBox_.onChange = [this] {
         if (const int id = curveBox_.getSelectedId(); id > 0) curveEditor_.setPreset(id - 1);
     };
     rerollButton_.onClick = [this] { proc_.rerollSeed(); };
     lockButton_.onClick = [this] { proc_.setLocked(lockButton_.getToggleState()); };
+    rerollButton_.setTooltip("Choose a new random seed");
+    lockButton_.setTooltip("Lock the current seed and disable re-roll");
     previewButton_.onClick = [this] { proc_.requestPreview(); };
     previewButton_.setTooltip("Queue one fill at the next quantized point; it waits until the current fill ends");
     helpButton_.setTooltip("Open TransitGen control help");
@@ -91,6 +100,9 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     undoButton_.setTooltip("Undo the last curve edit or preset change");
     redoButton_.setTooltip("Redo the last undone curve edit or preset change");
     status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
+    status_.setName("Fill status");
+    outputMeter_.setName("Output peak meter");
+    outputMeter_.setTooltip("Post-processor peak level with decaying hold");
     for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &undoButton_, &redoButton_, &helpButton_, &outputMeter_, &status_, &curveEditor_ })
         addAndMakeVisible(*c);
 

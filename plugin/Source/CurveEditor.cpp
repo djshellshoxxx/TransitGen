@@ -122,6 +122,10 @@ void CurveEditor::paint(juce::Graphics& g)
     g.fillRoundedRectangle(outer, 6.0f);
     g.setColour(border);
     g.drawRoundedRectangle(outer.reduced(0.5f), 6.0f, 1.0f);
+    if (hasKeyboardFocus(false)) {
+        g.setColour(secondary);
+        g.drawRoundedRectangle(outer.reduced(2.0f), 4.0f, 1.5f);
+    }
 
     auto plot = plotBounds();
     if (plot.getWidth() <= 0.0f || plot.getHeight() <= 0.0f) return;

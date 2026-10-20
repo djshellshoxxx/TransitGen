@@ -12,7 +12,7 @@
 
 namespace tgp {
 
-class OutputMeter final : public juce::Component {
+class OutputMeter final : public juce::Component, public juce::SettableTooltipClient {
 public:
     void setPeak(float linearPeak);
     void paint(juce::Graphics&) override;
