@@ -146,6 +146,37 @@ TEST_CASE("plugin: output peak meter tracks processed and bypassed audio", "[plu
     CHECK(proc.consumeOutputPeak() == 0.9f);
 }
 
+TEST_CASE("plugin: preview is a queued one-shot and restores the selected trigger mode", "[plugin][preview]")
+{
+    TransitGenProcessor proc;
+    FakePlayHead head;
+    proc.setPlayHead(&head);
+    setParam(proc, "fill_len", 0.0f); // 1/4 beat keeps the test short
+    setParam(proc, "quantize", 0.0f); // next block
+    proc.prepareToPlay(kSr, kBlock);
+
+    proc.requestPreview();
+    juce::AudioBuffer<float> buf(2, kBlock);
+    juce::MidiBuffer midi;
+    int block = 0;
+    for (; block < 40 && proc.telemetry().fillCount.load() == 0; ++block) {
+        buf.clear();
+        head.sample = static_cast<int64_t>(block) * kBlock;
+        proc.processBlock(buf, midi);
+    }
+    REQUIRE(proc.telemetry().fillCount.load() == 1);
+
+    for (; block < 70; ++block) {
+        buf.clear();
+        head.sample = static_cast<int64_t>(block) * kBlock;
+        proc.processBlock(buf, midi);
+    }
+    CHECK(proc.telemetry().fillCount.load() == 1);
+    tg::EngineSettings settings;
+    proc.currentSettings(settings);
+    CHECK(settings.mode == tg::TriggerMode::AutoPhrase);
+}
+
 TEST_CASE("plugin: state save -> load -> save is byte-identical", "[plugin][state]")
 {
     juce::MemoryBlock first;

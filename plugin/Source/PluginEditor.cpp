@@ -71,8 +71,8 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     };
     rerollButton_.onClick = [this] { proc_.rerollSeed(); };
     lockButton_.onClick = [this] { proc_.setLocked(lockButton_.getToggleState()); };
-    previewButton_.setEnabled(false);   // the engine has no preview hook yet (05: one-shot at the next quantize point)
-    previewButton_.setTooltip("Preview arrives with the M4 UI");
+    previewButton_.onClick = [this] { proc_.requestPreview(); };
+    previewButton_.setTooltip("Queue one fill at the next quantized point; it waits until the current fill ends");
     helpButton_.setTooltip("Open TransitGen control help");
     helpButton_.onClick = [] {
         juce::AlertWindow::showMessageBoxAsync(
@@ -81,8 +81,8 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
             "drag a point to move it; Alt-drag a segment to bend it; Shift-drag to snap an interior point to 1/16; "
             "double-click an interior point to remove it.\n\n"
             "Re-roll chooses a new seed. Lock keeps the current seed and disables re-roll. The plan lanes show the "
-            "next generated fill. The output meter shows post-effect peak level. Preview is not available yet; "
-            "use your DAW's transport and host bypass controls.",
+            "next generated fill. The output meter shows post-effect peak level. Preview queues one fill at the next "
+            "quantized point; it waits for a running fill to finish. Use your DAW's host bypass control to bypass.",
             "Close", nullptr);
     };
     undoButton_.onClick = [this] { curveEditor_.undo(); };

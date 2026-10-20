@@ -80,6 +80,11 @@ void TransitGenProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     preparedBlock_ = std::max(1, samplesPerBlock);
     engine_.prepare(sampleRate, preparedBlock_, tg::kMaxChannels);   // fixed channel count: layout changes need no realloc
     wasBypassed_.store(false, std::memory_order_relaxed);
+    previewRequested_.store(false, std::memory_order_relaxed);
+    previewWaiting_ = false;
+    previewActive_ = false;
+    previewArming_ = false;
+    previewFillStarted_ = false;
     setLatencySamples(0);
 }
 
@@ -93,11 +98,31 @@ void TransitGenProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
         midi.clear();
         return;
     }
-    if (wasBypassed_.exchange(false, std::memory_order_relaxed)) engine_.reset();   // no stale fill after bypass
+    if (wasBypassed_.exchange(false, std::memory_order_relaxed)) {
+        engine_.reset();   // no stale fill after bypass
+        previewActive_ = false;
+        previewArming_ = false;
+        previewFillStarted_ = false;
+    }
+
+    if (previewRequested_.exchange(false, std::memory_order_acquire) && !previewActive_ && !previewWaiting_)
+        previewWaiting_ = true;
+    if (previewWaiting_ && !engine_.telemetry().fillActive.load(std::memory_order_relaxed)) {
+        previewWaiting_ = false;
+        previewActive_ = true;
+        previewArming_ = true;
+        previewFillStarted_ = false;
+        previewStartFillCount_ = engine_.telemetry().fillCount.load(std::memory_order_relaxed);
+        previewStartTimeoutSamples_ = static_cast<int64_t>(std::lround(getSampleRate() * 30.0));
+    }
 
     // Parameters and published objects: once per block (01 §7). The curve/style pointers feed GenSettings.
     tg::EngineSettings s;
     snapshot_.read(s);
+    if (previewActive_) {
+        s.mode = tg::TriggerMode::Automation;
+        s.trigger = !previewArming_; // create a fresh rising edge, then hold until the one-shot finishes
+    }
     if (locked_.load(std::memory_order_relaxed)) s.variation = tg::Variation::Fixed;   // 03 §7
     s.curve = curve_.acquire();
     s.styles = styles_.acquire();
@@ -120,6 +145,18 @@ void TransitGenProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     midi.clear();
 
     processChunked(buffer, std::min(buffer.getNumChannels(), tg::kMaxChannels), ti, numMidi);
+
+    if (previewActive_) {
+        previewArming_ = false;
+        const uint32_t fillCount = engine_.telemetry().fillCount.load(std::memory_order_relaxed);
+        if (fillCount != previewStartFillCount_) previewFillStarted_ = true;
+        if (previewFillStarted_ && !engine_.telemetry().fillActive.load(std::memory_order_relaxed)) {
+            previewActive_ = false;
+        } else if (!previewFillStarted_) {
+            previewStartTimeoutSamples_ -= numSamples;
+            if (previewStartTimeoutSamples_ <= 0) previewActive_ = false; // don't leave Automation forced after a rejected start
+        }
+    }
 }
 
 void TransitGenProcessor::processChunked(juce::AudioBuffer<float>& buffer, int numChannels, tg::TransportInfo ti,

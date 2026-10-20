@@ -60,6 +60,8 @@ public:
     tg::EnergyCurve energyCurve() const;
     /// Generates the deterministic next-fill plan for the current controls; message thread only.
     bool previewPlan(tg::FillPlan& plan) const noexcept;
+    /// Queues a one-shot fill for the next quantized point; audio thread consumes the request.
+    void requestPreview() noexcept { previewRequested_.store(true, std::memory_order_release); }
     juce::String curvePresetName() const;
 
     /// 03 §7: seed = 1 + nextInt(99999); the old seed goes to the history. Ignored while locked.
@@ -100,6 +102,13 @@ private:
     int                                               preparedBlock_ = 0;
     std::atomic<bool>                                 wasBypassed_{ false };
     std::atomic<float>                                outputPeak_{ 0.0f };
+    std::atomic<bool>                                 previewRequested_{ false };
+    bool                                               previewWaiting_ = false;
+    bool                                               previewActive_ = false;
+    bool                                               previewArming_ = false;
+    bool                                               previewFillStarted_ = false;
+    uint32_t                                           previewStartFillCount_ = 0;
+    int64_t                                            previewStartTimeoutSamples_ = 0;
 
     // Shared flags
     std::atomic<bool>   locked_{ false };
