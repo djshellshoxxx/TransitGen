@@ -27,6 +27,7 @@ CurveEditor::CurveEditor(TransitGenProcessor& processor) : processor_(processor)
 {
     setName("Energy curve editor");
     setTooltip("Drag points to shape fill energy. Double-click a point to remove it; Alt-drag a segment to bend it; click to add a point.");
+    setWantsKeyboardFocus(true);
 }
 
 void CurveEditor::remember(const tg::EnergyCurve& curve)
