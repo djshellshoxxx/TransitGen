@@ -20,6 +20,7 @@ private:
     juce::Point<float> pointToPosition(const tg::CurvePoint&) const;
     juce::Point<float> positionToCurve(juce::Point<float>) const;
     juce::Rectangle<float> plotBounds() const;
+    juce::Rectangle<float> curveBounds() const;
     int hitPoint(juce::Point<float>) const;
     void insertPoint(juce::Point<float>);
     void deletePoint(juce::Point<float>);

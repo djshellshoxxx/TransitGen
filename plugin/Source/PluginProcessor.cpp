@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 
 #include "transitgen/StyleLoader.h"
+#include "transitgen/Generator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -198,6 +199,33 @@ tg::EnergyCurve TransitGenProcessor::energyCurve() const
 {
     const juce::ScopedLock sl(stateLock_);
     return state_.curve;
+}
+
+bool TransitGenProcessor::previewPlan(tg::FillPlan& plan) const noexcept
+{
+    tg::EngineSettings settings;
+    snapshot_.read(settings);
+    settings.curve = curve_.current();
+    settings.styles = styles_.current();
+    if (locked_.load(std::memory_order_relaxed)) settings.variation = tg::Variation::Fixed;
+
+    const double barLength = lastBarLength();
+    tg::GenSettings gen{};
+    gen.seed = settings.seed;
+    gen.styleId = settings.styleId;
+    gen.lengthBeats = tg::fillLengthBeats(settings.fillLen, barLength);
+    gen.beatsPerBar = barLength;
+    gen.intensity = settings.intensity;
+    gen.density = settings.density;
+    gen.pitchAmount = settings.pitchAmount;
+    gen.crushAmount = settings.crushAmount;
+    gen.filterAmount = settings.filterAmount;
+    gen.endingOverride = settings.endingOverride;
+    gen.endingBeats = settings.endingBeats;
+    gen.curve = settings.curve;
+    gen.styles = settings.styles;
+    tg::generate(gen, plan);
+    return tg::validate(plan, gen.lengthBeats).ok;
 }
 
 juce::String TransitGenProcessor::curvePresetName() const

@@ -9,6 +9,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include <cmath>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -174,6 +175,22 @@ TEST_CASE("plugin: custom energy curve is validated, displayed as custom and sav
     restored.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
     CHECK(restored.energyCurve().points[0].value == 0.25f);
     CHECK(restored.curvePresetName().isEmpty());
+}
+
+TEST_CASE("plugin: generated preview plan matches current controls", "[plugin][preview]")
+{
+    TransitGenProcessor proc;
+    setParam(proc, "seed", 4242.0f);
+    setParam(proc, "fill_len", 5.0f);
+    tg::FillPlan first{};
+    tg::FillPlan second{};
+    REQUIRE(proc.previewPlan(first));
+    REQUIRE(proc.previewPlan(second));
+    CHECK(tg::validate(first, first.lengthBeats).ok);
+    CHECK(first.seed == 4242);
+    CHECK(first.lengthBeats == 4.0);
+    CHECK(first.numEvents == second.numEvents);
+    CHECK(std::memcmp(first.events, second.events, sizeof(first.events)) == 0);
 }
 
 TEST_CASE("plugin: loading tolerates unknown and missing elements", "[plugin][state]")

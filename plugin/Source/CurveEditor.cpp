@@ -21,7 +21,7 @@ CurveEditor::CurveEditor(TransitGenProcessor& processor) : processor_(processor)
 
 juce::Point<float> CurveEditor::pointToPosition(const tg::CurvePoint& p) const
 {
-    const auto bounds = plotBounds();
+    const auto bounds = curveBounds();
     return { bounds.getX() + p.t * bounds.getWidth(), bounds.getBottom() - p.value * bounds.getHeight() };
 }
 
@@ -32,9 +32,16 @@ juce::Rectangle<float> CurveEditor::plotBounds() const
     return bounds;
 }
 
+juce::Rectangle<float> CurveEditor::curveBounds() const
+{
+    auto bounds = plotBounds();
+    bounds.setHeight(bounds.getHeight() * 0.58f);
+    return bounds;
+}
+
 juce::Point<float> CurveEditor::positionToCurve(juce::Point<float> position) const
 {
-    const auto bounds = plotBounds();
+    const auto bounds = curveBounds();
     if (bounds.getWidth() <= 0.0f || bounds.getHeight() <= 0.0f) return {};
     const float t = std::clamp((position.x - bounds.getX()) / bounds.getWidth(), 0.0f, 1.0f);
     const float value = std::clamp((bounds.getBottom() - position.y) / bounds.getHeight(), 0.0f, 1.0f);
@@ -64,12 +71,13 @@ void CurveEditor::paint(juce::Graphics& g)
     g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
     g.drawText("ENERGY CURVE", getLocalBounds().reduced(8, 3).removeFromTop(16), juce::Justification::centredLeft);
 
+    const auto curveArea = curveBounds();
     for (int i = 0; i <= 4; ++i) {
-        const float y = plot.getY() + plot.getHeight() * static_cast<float>(i) / 4.0f;
-        const float x = plot.getX() + plot.getWidth() * static_cast<float>(i) / 4.0f;
+        const float y = curveArea.getY() + curveArea.getHeight() * static_cast<float>(i) / 4.0f;
+        const float x = curveArea.getX() + curveArea.getWidth() * static_cast<float>(i) / 4.0f;
         g.setColour(grid);
-        g.drawHorizontalLine(juce::roundToInt(y), plot.getX(), plot.getRight());
-        g.drawVerticalLine(juce::roundToInt(x), plot.getY(), plot.getBottom());
+        g.drawHorizontalLine(juce::roundToInt(y), curveArea.getX(), curveArea.getRight());
+        g.drawVerticalLine(juce::roundToInt(x), curveArea.getY(), plot.getBottom());
     }
 
     const tg::EnergyCurve curve = processor_.energyCurve();
@@ -79,7 +87,7 @@ void CurveEditor::paint(juce::Graphics& g)
     for (int i = 0; i <= kSamples; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(kSamples);
         const float value = static_cast<float>(curve.evaluate(t));
-        const juce::Point<float> p{ plot.getX() + t * plot.getWidth(), plot.getBottom() - value * plot.getHeight() };
+        const juce::Point<float> p{ curveArea.getX() + t * curveArea.getWidth(), curveArea.getBottom() - value * curveArea.getHeight() };
         if (i == 0) path.startNewSubPath(p);
         else path.lineTo(p);
     }
@@ -91,6 +99,64 @@ void CurveEditor::paint(juce::Graphics& g)
         g.fillEllipse(p.x - kPointRadius, p.y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f);
         g.setColour(background);
         g.drawEllipse(p.x - kPointRadius, p.y - kPointRadius, kPointRadius * 2.0f, kPointRadius * 2.0f, 1.0f);
+    }
+
+    tg::FillPlan plan{};
+    if (!processor_.previewPlan(plan) || plan.lengthBeats <= 0.0) return;
+    auto lanes = plot.withY(curveArea.getBottom()).withHeight(plot.getBottom() - curveArea.getBottom());
+    constexpr float labelWidth = 42.0f;
+    auto laneContent = lanes.withTrimmedLeft(labelWidth);
+    const float laneHeight = lanes.getHeight() / 4.0f;
+    const char* laneNames[] = { "SOURCE", "GATE", "CRUSH", "FILTER" };
+    for (int lane = 0; lane < 4; ++lane) {
+        const float y = lanes.getY() + laneHeight * static_cast<float>(lane);
+        g.setColour(grid);
+        g.drawHorizontalLine(juce::roundToInt(y), lanes.getX(), lanes.getRight());
+        g.setColour(muted);
+        g.setFont(juce::FontOptions(8.0f, juce::Font::bold));
+        g.drawText(laneNames[lane], juce::Rectangle<int>(juce::roundToInt(lanes.getX()), juce::roundToInt(y),
+                                                          juce::roundToInt(labelWidth - 4.0f), juce::roundToInt(laneHeight)),
+                   juce::Justification::centredLeft, false);
+    }
+    const float scaleX = laneContent.getWidth() / static_cast<float>(plan.lengthBeats);
+    for (int i = 0; i < plan.numEvents; ++i) {
+        const tg::FillEvent& event = plan.events[i];
+        const int lane = static_cast<int>(event.lane);
+        if (lane < 0 || lane > 2) continue;
+        const float y = lanes.getY() + laneHeight * static_cast<float>(lane);
+        const float x = laneContent.getX() + static_cast<float>(event.startBeat) * scaleX;
+        const float width = std::max(1.0f, static_cast<float>(event.lengthBeats) * scaleX - 1.0f);
+        juce::Colour colour = muted;
+        if (event.lane == tg::Lane::Source) {
+            const int savedType = static_cast<int>(event.type);
+            const tg::EventType type = savedType >= 0 && savedType <= static_cast<int>(tg::EventType::Silence)
+                                            ? event.type : tg::EventType::Pass;
+            switch (type) {
+                case tg::EventType::Stutter: colour = accent; break;
+                case tg::EventType::Reverse: colour = laneReverse; break;
+                case tg::EventType::TapeStop:
+                case tg::EventType::TapeStart: colour = laneTape; break;
+                case tg::EventType::Silence: colour = laneSilence; break;
+                default: colour = muted.withAlpha(0.35f); break;
+            }
+        } else if (event.lane == tg::Lane::Gate) colour = laneGate;
+        else colour = laneCrush;
+        g.setColour(colour);
+        g.fillRoundedRectangle(x, y + 3.0f, width, std::max(1.0f, laneHeight - 6.0f), 2.0f);
+    }
+
+    const tg::AutomationLane& cutoff = plan.lanes[static_cast<int>(tg::AutoTarget::FilterCutoff)];
+    if (cutoff.numPoints >= 2) {
+        juce::Path filterPath;
+        for (int i = 0; i < cutoff.numPoints; ++i) {
+            const tg::LanePoint& point = cutoff.points[i];
+            const float x = laneContent.getX() + static_cast<float>(point.beat) * scaleX;
+            const float y = lanes.getY() + laneHeight * 3.0f + laneHeight * (1.0f - point.value);
+            if (i == 0) filterPath.startNewSubPath(x, y);
+            else filterPath.lineTo(x, y);
+        }
+        g.setColour(text);
+        g.strokePath(filterPath, juce::PathStrokeType(1.5f));
     }
 }
 

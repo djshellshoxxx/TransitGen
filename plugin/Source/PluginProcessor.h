@@ -58,6 +58,8 @@ public:
     /// Replaces the energy curve after validating it; custom curves have an empty preset name.
     bool   setEnergyCurve(const tg::EnergyCurve& curve);
     tg::EnergyCurve energyCurve() const;
+    /// Generates the deterministic next-fill plan for the current controls; message thread only.
+    bool previewPlan(tg::FillPlan& plan) const noexcept;
     juce::String curvePresetName() const;
 
     /// 03 §7: seed = 1 + nextInt(99999); the old seed goes to the history. Ignored while locked.

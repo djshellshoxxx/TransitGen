@@ -21,4 +21,4 @@ The `standards/`, `skills/`, and `troubleshooting/` folders were imported from `
 
 ## Current implementation scope
 
-M4 now starts with a resizable energy-curve editor. Plan event lanes, preview triggering, undo/redo, complete accessible navigation, and shared baseline items remain open. The next preset work must resolve the shared JSON preset format against TransitGen spec 06's XML format before it becomes a public file contract.
+M4 now has a resizable energy-curve editor and a deterministic view of the next generated plan's Source, Gate, Crush and Filter lanes. Preview triggering, undo/redo, complete accessible navigation, and shared baseline items remain open. The next preset work must resolve the shared JSON preset format against TransitGen spec 06's XML format before it becomes a public file contract.

@@ -97,6 +97,7 @@ void TransitGenEditor::resized()
 void TransitGenEditor::timerCallback()
 {
     proc_.collectRetired();
+    curveEditor_.repaint();
     status_.setText(statusText(proc_), juce::dontSendNotification);
 
     const bool locked = proc_.isLocked();
