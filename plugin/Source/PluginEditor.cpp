@@ -82,7 +82,8 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
             "double-click an interior point to remove it.\n\n"
             "Re-roll chooses a new seed. Lock keeps the current seed and disables re-roll. The plan lanes show the "
             "next generated fill. The output meter shows post-effect peak level. Preview queues one fill at the next "
-            "quantized point; it waits for a running fill to finish. Use your DAW's host bypass control to bypass.",
+            "quantized point; it waits for running or scheduled fills to finish. Keyboard: Space previews, R re-rolls, "
+            "L toggles Lock, and Ctrl/Cmd+Z/Y undoes or redoes curve changes. Use your DAW's host bypass control.",
             "Close", nullptr);
     };
     undoButton_.onClick = [this] { curveEditor_.undo(); };
@@ -96,6 +97,7 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     setSize(kWidth, 600);
     setResizable(true, true);
     setResizeLimits(760, 540, 1920, 1200);
+    setWantsKeyboardFocus(true);
     timerCallback();
     startTimerHz(30);
 }
@@ -141,6 +143,36 @@ void TransitGenEditor::resized()
         rows_[i]->label.setBounds(cell.removeFromLeft(120));
         rows_[i]->control->setBounds(cell.reduced(4, 2));
     }
+}
+
+bool TransitGenEditor::keyPressed(const juce::KeyPress& key)
+{
+    const auto modifiers = key.getModifiers();
+    const juce::juce_wchar character = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+    if (modifiers.isCommandDown()) {
+        if (character == 'z') {
+            if (modifiers.isShiftDown()) curveEditor_.redo();
+            else curveEditor_.undo();
+            return true;
+        }
+        if (character == 'y') {
+            curveEditor_.redo();
+            return true;
+        }
+    }
+    if (key.getKeyCode() == juce::KeyPress::spaceKey) {
+        proc_.requestPreview();
+        return true;
+    }
+    if (character == 'r') {
+        proc_.rerollSeed();
+        return true;
+    }
+    if (character == 'l') {
+        proc_.setLocked(!proc_.isLocked());
+        return true;
+    }
+    return false;
 }
 
 void TransitGenEditor::timerCallback()

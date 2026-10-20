@@ -256,6 +256,7 @@ void CurveEditor::deletePoint(juce::Point<float> position)
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
+    grabKeyboardFocus();
     gestureRecorded_ = false;
     dragStart_ = processor_.energyCurve();
     draggedPoint_ = hitPoint(event.position);

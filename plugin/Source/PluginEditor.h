@@ -28,6 +28,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    bool keyPressed(const juce::KeyPress&) override;
 
     /// Telemetry line shown in the status label ("next fill in …" / "FILL" / seed).
     static juce::String statusText(const TransitGenProcessor&);
