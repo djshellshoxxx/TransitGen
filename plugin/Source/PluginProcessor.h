@@ -74,6 +74,8 @@ public:
     /// Bar length and bar-grid phase (beats) of the last processed block, for the UI countdown.
     double lastBarLength() const noexcept { return uiBarLen_.load(std::memory_order_relaxed); }
     double lastGridOrigin() const noexcept { return uiGridOrigin_.load(std::memory_order_relaxed); }
+    /// Returns and clears the highest output sample peak accumulated since the last read.
+    float consumeOutputPeak() noexcept { return outputPeak_.exchange(0.0f, std::memory_order_relaxed); }
 
     static constexpr int kMaxMidiEventsPerBlock = 1024;
 
@@ -97,6 +99,7 @@ private:
     std::array<tg::MidiEvent, kMaxMidiEventsPerBlock> midiScratch_{};
     int                                               preparedBlock_ = 0;
     std::atomic<bool>                                 wasBypassed_{ false };
+    std::atomic<float>                                outputPeak_{ 0.0f };
 
     // Shared flags
     std::atomic<bool>   locked_{ false };

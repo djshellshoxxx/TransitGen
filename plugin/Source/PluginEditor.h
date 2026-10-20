@@ -12,6 +12,15 @@
 
 namespace tgp {
 
+class OutputMeter final : public juce::Component {
+public:
+    void setPeak(float linearPeak);
+    void paint(juce::Graphics&) override;
+
+private:
+    float peakDb_ = -60.0f;
+};
+
 class TransitGenEditor final : public juce::AudioProcessorEditor, private juce::Timer {
 public:
     explicit TransitGenEditor(TransitGenProcessor&);
@@ -42,6 +51,7 @@ private:
     juce::TextButton                       rerollButton_{ "Re-roll" };
     juce::ToggleButton                     lockButton_{ "Lock" };
     juce::TextButton                       previewButton_{ "Preview" };
+    OutputMeter                            outputMeter_;
     juce::Label                            status_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransitGenEditor)

@@ -9,6 +9,32 @@ namespace {
 constexpr int kRowH = 26, kMargin = 10, kTopH = 50, kColumns = 2, kWidth = 960;
 }
 
+void OutputMeter::setPeak(float linearPeak)
+{
+    const float finitePeak = std::isfinite(linearPeak) ? std::max(0.0f, linearPeak) : 1.0f;
+    const float db = finitePeak > 0.000001f ? juce::Decibels::gainToDecibels(finitePeak) : -60.0f;
+    peakDb_ = std::max(db, peakDb_ - 1.5f);
+    repaint();
+}
+
+void OutputMeter::paint(juce::Graphics& g)
+{
+    using namespace ui;
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour(muted);
+    g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    g.drawText("OUT", bounds.removeFromLeft(28.0f), juce::Justification::centredLeft);
+    auto readout = bounds.removeFromRight(42.0f);
+    g.drawText(peakDb_ <= -60.0f ? "-inf" : juce::String(peakDb_, 1), readout, juce::Justification::centredRight);
+    auto bar = bounds.reduced(4.0f, bounds.getHeight() * 0.3f);
+    g.setColour(panel);
+    g.fillRoundedRectangle(bar, 2.0f);
+    const float fraction = std::clamp((peakDb_ + 60.0f) / 60.0f, 0.0f, 1.0f);
+    bar.setWidth(bar.getWidth() * fraction);
+    g.setColour(peakDb_ >= -1.0f ? accent : secondary);
+    g.fillRoundedRectangle(bar, 2.0f);
+}
+
 TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEditor(p), proc_(p), curveEditor_(p)
 {
     for (juce::AudioProcessorParameter* base : p.getParameters()) {
@@ -48,7 +74,7 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     previewButton_.setEnabled(false);   // the engine has no preview hook yet (05: one-shot at the next quantize point)
     previewButton_.setTooltip("Preview arrives with the M4 UI");
     status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &status_, &curveEditor_ })
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &outputMeter_, &status_, &curveEditor_ })
         addAndMakeVisible(*c);
 
     setSize(kWidth, 600);
@@ -79,6 +105,8 @@ void TransitGenEditor::resized()
     lockButton_.setBounds(buttons.removeFromLeft(70));
     buttons.removeFromLeft(8);
     previewButton_.setBounds(buttons.removeFromLeft(90));
+    buttons.removeFromLeft(12);
+    outputMeter_.setBounds(buttons.removeFromRight(220));
     status_.setBounds(top.reduced(0, 4));
 
     area.removeFromTop(kMargin / 2);
@@ -98,6 +126,7 @@ void TransitGenEditor::timerCallback()
 {
     proc_.collectRetired();
     curveEditor_.repaint();
+    outputMeter_.setPeak(proc_.consumeOutputPeak());
     status_.setText(statusText(proc_), juce::dontSendNotification);
 
     const bool locked = proc_.isLocked();

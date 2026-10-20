@@ -126,6 +126,26 @@ TEST_CASE("plugin: bypass passes audio through", "[plugin]")
         for (int i = 0; i < kBlock; ++i) REQUIRE(buf.getSample(c, i) == input(c, i));
 }
 
+TEST_CASE("plugin: output peak meter tracks processed and bypassed audio", "[plugin][meter]")
+{
+    TransitGenProcessor proc;
+    proc.prepareToPlay(kSr, kBlock);
+    juce::AudioBuffer<float> buf(2, kBlock);
+    buf.clear();
+    buf.setSample(0, 17, -0.75f);
+    buf.setSample(1, 31, 0.5f);
+    juce::MidiBuffer midi;
+
+    proc.processBlock(buf, midi);
+    CHECK(proc.consumeOutputPeak() == 0.75f);
+    CHECK(proc.consumeOutputPeak() == 0.0f);
+
+    buf.clear();
+    buf.setSample(1, 23, 0.9f);
+    proc.processBlockBypassed(buf, midi);
+    CHECK(proc.consumeOutputPeak() == 0.9f);
+}
+
 TEST_CASE("plugin: state save -> load -> save is byte-identical", "[plugin][state]")
 {
     juce::MemoryBlock first;

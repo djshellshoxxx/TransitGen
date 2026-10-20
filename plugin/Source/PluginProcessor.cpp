@@ -145,12 +145,25 @@ void TransitGenProcessor::processChunked(juce::AudioBuffer<float>& buffer, int n
         m0 = m1;
         start += n;
     }
+
+    float peak = 0.0f;
+    for (int c = 0; c < numChannels; ++c)
+        for (int i = 0; i < total; ++i)
+            peak = std::max(peak, std::abs(data[c][i]));
+    float accumulated = outputPeak_.load(std::memory_order_relaxed);
+    while (accumulated < peak && !outputPeak_.compare_exchange_weak(accumulated, peak, std::memory_order_relaxed)) {}
 }
 
 void TransitGenProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     // Pass-through: inputs stay as they are, extra outputs are silenced. Zero latency, nothing to delay.
     for (int c = getTotalNumInputChannels(); c < buffer.getNumChannels(); ++c) buffer.clear(c, 0, buffer.getNumSamples());
+    float peak = 0.0f;
+    for (int c = 0; c < getTotalNumInputChannels(); ++c)
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            peak = std::max(peak, std::abs(buffer.getSample(c, i)));
+    float accumulated = outputPeak_.load(std::memory_order_relaxed);
+    while (accumulated < peak && !outputPeak_.compare_exchange_weak(accumulated, peak, std::memory_order_relaxed)) {}
     midi.clear();
     wasBypassed_.store(true, std::memory_order_relaxed);
 }
