@@ -1,7 +1,5 @@
-# Troubleshooting knowledge base
+# Shared audio troubleshooting notes
 
-Place existing advanced audio troubleshooting files here; none are yet represented as verified entries. Preserve original filenames and content.
+This directory contains reusable reports for JUCE, DSP, host integration, build, parameter and validation problems. The reports are reference material, not proof that TransitGen has the same defect. Check affected versions, framework, host and reproduction conditions before applying a workaround.
 
-For each record index tags, symptoms, environment, root cause status, verification evidence, affected components and source path. Search before repeated attempts at diagnosing difficult DSP/host/build issues. Verify environmental fit before reuse.
-
-New records should use `templates/TROUBLESHOOTING_TEMPLATE.md`. Separate confirmed fixes from hypotheses, include reproduction and regression tests, and never label a fix validated without evidence.
+Use the entries as a starting point for investigation. Record whether the cause is confirmed, the reproduction evidence, affected components and a regression test before treating a fix as verified. `patterns/` contains reusable guidance; dated issue reports describe specific prior projects.

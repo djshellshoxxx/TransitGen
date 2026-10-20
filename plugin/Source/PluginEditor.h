@@ -3,6 +3,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "CurveEditor.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -36,6 +37,7 @@ private:
 
     TransitGenProcessor&                   proc_;
     std::vector<std::unique_ptr<ParamRow>> rows_;
+    CurveEditor                           curveEditor_;
     juce::ComboBox                         curveBox_;
     juce::TextButton                       rerollButton_{ "Re-roll" };
     juce::ToggleButton                     lockButton_{ "Lock" };

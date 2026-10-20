@@ -182,6 +182,24 @@ void TransitGenProcessor::setCurvePreset(int index)
     publishCurve(tg::kCurvePresets[index]);
 }
 
+bool TransitGenProcessor::setEnergyCurve(const tg::EnergyCurve& curve)
+{
+    if (!tg::isValidCurve(curve)) return false;
+    {
+        const juce::ScopedLock sl(stateLock_);
+        state_.curve = curve;
+        state_.curvePreset.clear();
+    }
+    publishCurve(curve);
+    return true;
+}
+
+tg::EnergyCurve TransitGenProcessor::energyCurve() const
+{
+    const juce::ScopedLock sl(stateLock_);
+    return state_.curve;
+}
+
 juce::String TransitGenProcessor::curvePresetName() const
 {
     const juce::ScopedLock sl(stateLock_);

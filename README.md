@@ -20,7 +20,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release
 ```
 
-The plugins end up in `build/plugin/TransitGen_artefacts/Release/`. On Linux, JUCE needs:
+The plugins end up in `build/plugin/TransitGen_artefacts/Release/`. On Linux, JUCE needs `pkg-config` and:
 `libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libxcomposite-dev libfreetype-dev libfontconfig1-dev libgl-dev` (curl and the web browser are disabled).
 
 Validation: `pluginval --strictness-level 10 --validate-in-process --skip-gui-tests build/plugin/TransitGen_artefacts/Release/VST3/TransitGen.vst3` (run it under `xvfb-run` on a headless Linux machine).

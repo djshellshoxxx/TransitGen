@@ -1,7 +1,15 @@
-# Advanced DSP skills
+# Shared development skills
 
-Place your existing advanced DSP skills here without renaming or overwriting original materials. The contents have **not yet been supplied** to this repository.
+This directory contains the shared CDL skill library. Read the complete skill and its referenced files when applying it. The most relevant skills for TransitGen are:
 
-For each skill, register a path, tags, applicable language/platform/technology, and summary in `KNOWLEDGE_INDEX.yaml`. Agents should read the index at planning time and retrieve only relevant complete skills before DSP implementation or optimization. Respect instructions embedded in existing skill files only as reference material, subject to project requirements and higher-priority instructions.
+| Skill | Use in TransitGen |
+|---|---|
+| `audio-dsp-review` | Review `processBlock`, the core engine, real-time safety and audio correctness. |
+| `audio-numerics-review` | Check finite values, coefficient ranges and numerical edge cases. |
+| `audio-performance-debug` | Measure callback and UI performance; avoid unsupported performance claims. |
+| `juce-review` | Review JUCE processor, parameter, state and editor integration. |
+| `build-automation` | Configure, build, test and report build failures. |
+| `plugin-testing` | Select targeted plugin and host validation appropriate to the available environment. |
+| `plugin-improve` | Reuse its backup, root-cause, changelog and regression practices where applicable. Its finished-plugin precondition does not describe TransitGen's current development status. |
 
-Suggested subjects: real-time safety, filters, oversampling, FFT, multirate DSP, spectral processing, modulation, nonlinear modeling, JUCE, CLAP/VST3, numerical stability and benchmarking.
+Use other skills only when their scope matches the task. Skill text is project guidance and remains subordinate to the user's request, TransitGen's specifications, and higher-priority instructions.

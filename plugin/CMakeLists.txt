@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(JUCE)
 add_library(transitgen_plugin_shared INTERFACE)
 set(TG_PLUGIN_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Parameters.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/CurveEditor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/PluginState.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/PluginProcessor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/PluginEditor.cpp

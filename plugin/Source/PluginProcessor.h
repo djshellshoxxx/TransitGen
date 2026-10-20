@@ -55,6 +55,9 @@ public:
 
     /// Selects a factory curve preset and publishes it to the audio thread.
     void   setCurvePreset(int index);
+    /// Replaces the energy curve after validating it; custom curves have an empty preset name.
+    bool   setEnergyCurve(const tg::EnergyCurve& curve);
+    tg::EnergyCurve energyCurve() const;
     juce::String curvePresetName() const;
 
     /// 03 §7: seed = 1 + nextInt(99999); the old seed goes to the history. Ignored while locked.

@@ -1,14 +1,15 @@
 #include "PluginEditor.h"
+#include "../ui/Theme.h"
 
 #include <cmath>
 
 namespace tgp {
 
 namespace {
-constexpr int kRowH = 26, kMargin = 10, kTopH = 70, kColumns = 2, kWidth = 760;
+constexpr int kRowH = 26, kMargin = 10, kTopH = 50, kColumns = 2, kWidth = 960;
 }
 
-TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEditor(p), proc_(p)
+TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEditor(p), proc_(p), curveEditor_(p)
 {
     for (juce::AudioProcessorParameter* base : p.getParameters()) {
         auto* param = dynamic_cast<juce::RangedAudioParameter*>(base);
@@ -47,11 +48,12 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     previewButton_.setEnabled(false);   // the engine has no preview hook yet (05: one-shot at the next quantize point)
     previewButton_.setTooltip("Preview arrives with the M4 UI");
     status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &status_ })
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &status_, &curveEditor_ })
         addAndMakeVisible(*c);
 
-    const int rowsPerCol = (static_cast<int>(rows_.size()) + kColumns - 1) / kColumns;
-    setSize(kWidth, kTopH + rowsPerCol * kRowH + 2 * kMargin);
+    setSize(kWidth, 600);
+    setResizable(true, true);
+    setResizeLimits(760, 540, 1920, 1200);
     timerCallback();
     startTimerHz(30);
 }
@@ -60,15 +62,15 @@ TransitGenEditor::~TransitGenEditor() { stopTimer(); }
 
 void TransitGenEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-    g.setColour(juce::Colours::white.withAlpha(0.15f));
+    g.fillAll(ui::background);
+    g.setColour(ui::border);
     g.drawHorizontalLine(kTopH, static_cast<float>(kMargin), static_cast<float>(getWidth() - kMargin));
 }
 
 void TransitGenEditor::resized()
 {
     juce::Rectangle<int> area = getLocalBounds().reduced(kMargin);
-    juce::Rectangle<int> top = area.removeFromTop(kTopH - kMargin);
+    juce::Rectangle<int> top = area.removeFromTop(kTopH);
     juce::Rectangle<int> buttons = top.removeFromTop(28);
     curveBox_.setBounds(buttons.removeFromLeft(180));
     buttons.removeFromLeft(8);
@@ -79,6 +81,8 @@ void TransitGenEditor::resized()
     previewButton_.setBounds(buttons.removeFromLeft(90));
     status_.setBounds(top.reduced(0, 4));
 
+    area.removeFromTop(kMargin / 2);
+    curveEditor_.setBounds(area.removeFromTop(190));
     area.removeFromTop(kMargin);
     const int rowsPerCol = (static_cast<int>(rows_.size()) + kColumns - 1) / kColumns;
     const int colW = area.getWidth() / kColumns;

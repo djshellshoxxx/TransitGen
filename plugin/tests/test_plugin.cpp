@@ -155,6 +155,27 @@ TEST_CASE("plugin: state save -> load -> save is byte-identical", "[plugin][stat
     CHECK(saveState(c) == second);
 }
 
+TEST_CASE("plugin: custom energy curve is validated, displayed as custom and saved", "[plugin][curve]")
+{
+    TransitGenProcessor proc;
+    tg::EnergyCurve curve = tg::curvePreset(tg::CurvePreset::RampUp);
+    curve.points[0].value = 0.25f;
+    REQUIRE(proc.setEnergyCurve(curve));
+    CHECK(proc.curvePresetName().isEmpty());
+    CHECK(proc.energyCurve().points[0].value == 0.25f);
+
+    tg::EnergyCurve invalid = curve;
+    invalid.points[1].t = 0.5f;
+    CHECK_FALSE(proc.setEnergyCurve(invalid));
+    CHECK(proc.energyCurve().points[1].t == 1.0f);
+
+    const juce::MemoryBlock saved = saveState(proc);
+    TransitGenProcessor restored;
+    restored.setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
+    CHECK(restored.energyCurve().points[0].value == 0.25f);
+    CHECK(restored.curvePresetName().isEmpty());
+}
+
 TEST_CASE("plugin: loading tolerates unknown and missing elements", "[plugin][state]")
 {
 
