@@ -190,12 +190,14 @@ void CurveEditor::paint(juce::Graphics& g)
             const tg::EventType type = savedType >= 0 && savedType <= static_cast<int>(tg::EventType::Silence)
                                             ? event.type : tg::EventType::Pass;
             switch (type) {
+                case tg::EventType::Pass: colour = muted.withAlpha(0.35f); break;
                 case tg::EventType::Stutter: colour = accent; break;
                 case tg::EventType::Reverse: colour = laneReverse; break;
                 case tg::EventType::TapeStop:
                 case tg::EventType::TapeStart: colour = laneTape; break;
                 case tg::EventType::Silence: colour = laneSilence; break;
-                default: colour = muted.withAlpha(0.35f); break;
+                case tg::EventType::Gate:
+                case tg::EventType::Crush: colour = muted.withAlpha(0.35f); break;
             }
         } else if (event.lane == tg::Lane::Gate) colour = laneGate;
         else colour = laneCrush;
