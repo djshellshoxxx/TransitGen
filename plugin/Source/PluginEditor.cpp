@@ -73,8 +73,20 @@ TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEdito
     lockButton_.onClick = [this] { proc_.setLocked(lockButton_.getToggleState()); };
     previewButton_.setEnabled(false);   // the engine has no preview hook yet (05: one-shot at the next quantize point)
     previewButton_.setTooltip("Preview arrives with the M4 UI");
+    helpButton_.setTooltip("Open TransitGen control help");
+    helpButton_.onClick = [] {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::MessageBoxIconType::NoIcon, "TransitGen Help",
+            "Choose a trigger mode and fill settings, then shape the Energy Curve. Click the curve to add a point; "
+            "drag a point to move it; Alt-drag a segment to bend it; Shift-drag to snap an interior point to 1/16; "
+            "double-click an interior point to remove it.\n\n"
+            "Re-roll chooses a new seed. Lock keeps the current seed and disables re-roll. The plan lanes show the "
+            "next generated fill. The output meter shows post-effect peak level. Preview is not available yet; "
+            "use your DAW's transport and host bypass controls.",
+            "Close", nullptr);
+    };
     status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
-    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &outputMeter_, &status_, &curveEditor_ })
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &helpButton_, &outputMeter_, &status_, &curveEditor_ })
         addAndMakeVisible(*c);
 
     setSize(kWidth, 600);
@@ -107,6 +119,7 @@ void TransitGenEditor::resized()
     previewButton_.setBounds(buttons.removeFromLeft(90));
     buttons.removeFromLeft(12);
     outputMeter_.setBounds(buttons.removeFromRight(220));
+    helpButton_.setBounds(buttons.removeFromRight(64));
     status_.setBounds(top.reduced(0, 4));
 
     area.removeFromTop(kMargin / 2);
