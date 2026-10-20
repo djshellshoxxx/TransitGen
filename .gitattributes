@@ -1,0 +1,2 @@
+# Golden plans are compared byte-for-byte on every OS: never convert line endings.
+core/tests/golden/* -text

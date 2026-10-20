@@ -1,0 +1,240 @@
+#include "PluginEditor.h"
+#include "../ui/Theme.h"
+
+#include <cmath>
+
+namespace tgp {
+
+namespace {
+constexpr int kRowH = 26, kMargin = 10, kTopH = 50, kColumns = 2, kWidth = 960;
+}
+
+void OutputMeter::setPeak(float linearPeak)
+{
+    const float finitePeak = std::isfinite(linearPeak) ? std::max(0.0f, linearPeak) : 1.0f;
+    const float db = finitePeak > 0.000001f ? juce::Decibels::gainToDecibels(finitePeak) : -60.0f;
+    peakDb_ = std::max(db, peakDb_ - 1.5f);
+    repaint();
+}
+
+void OutputMeter::paint(juce::Graphics& g)
+{
+    using namespace ui;
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour(muted);
+    g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    g.drawText("OUT", bounds.removeFromLeft(28.0f), juce::Justification::centredLeft);
+    auto readout = bounds.removeFromRight(42.0f);
+    g.drawText(peakDb_ <= -60.0f ? "-inf" : juce::String(peakDb_, 1), readout, juce::Justification::centredRight);
+    auto bar = bounds.reduced(4.0f, bounds.getHeight() * 0.3f);
+    g.setColour(panel);
+    g.fillRoundedRectangle(bar, 2.0f);
+    const float fraction = std::clamp((peakDb_ + 60.0f) / 60.0f, 0.0f, 1.0f);
+    bar.setWidth(bar.getWidth() * fraction);
+    g.setColour(peakDb_ >= -1.0f ? accent : secondary);
+    g.fillRoundedRectangle(bar, 2.0f);
+}
+
+TransitGenEditor::TransitGenEditor(TransitGenProcessor& p) : AudioProcessorEditor(p), proc_(p), curveEditor_(p)
+{
+    for (juce::AudioProcessorParameter* base : p.getParameters()) {
+        auto* param = dynamic_cast<juce::RangedAudioParameter*>(base);
+        if (param == nullptr) continue;
+        auto row = std::make_unique<ParamRow>();
+        row->label.setText(param->getName(64), juce::dontSendNotification);
+        row->label.setName(param->getName(64));
+        row->label.setTooltip(param->getName(64));
+        row->label.setJustificationType(juce::Justification::centredRight);
+        if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(param)) {
+            auto box = std::make_unique<juce::ComboBox>();
+            box->addItemList(choice->choices, 1);
+            row->combo = std::make_unique<juce::ComboBoxParameterAttachment>(*param, *box);
+            row->control = std::move(box);
+        } else if (dynamic_cast<juce::AudioParameterBool*>(param) != nullptr) {
+            auto button = std::make_unique<juce::ToggleButton>();
+            row->button = std::make_unique<juce::ButtonParameterAttachment>(*param, *button);
+            row->control = std::move(button);
+        } else {
+            auto slider = std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+            slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 70, kRowH - 6);
+            slider->setTextValueSuffix(param->getLabel().isEmpty() ? juce::String() : " " + param->getLabel());
+            row->slider = std::make_unique<juce::SliderParameterAttachment>(*param, *slider);
+            row->control = std::move(slider);
+        }
+        row->control->setName(param->getName(64));
+        if (auto* tooltip = dynamic_cast<juce::SettableTooltipClient*>(row->control.get()))
+            tooltip->setTooltip(param->getName(64));
+        addAndMakeVisible(row->label);
+        addAndMakeVisible(*row->control);
+        rows_.push_back(std::move(row));
+    }
+
+    for (int i = 0; i < static_cast<int>(tg::CurvePreset::kCount); ++i) curveBox_.addItem(tg::kCurvePresetNames[i], i + 1);
+    curveBox_.setName("Energy curve preset");
+    curveBox_.setTooltip("Choose a factory energy curve; edits can be undone and redone");
+    curveBox_.setTextWhenNothingSelected("Custom curve");
+    curveBox_.onChange = [this] {
+        if (const int id = curveBox_.getSelectedId(); id > 0) curveEditor_.setPreset(id - 1);
+    };
+    rerollButton_.onClick = [this] { proc_.rerollSeed(); };
+    lockButton_.onClick = [this] { proc_.setLocked(lockButton_.getToggleState()); };
+    rerollButton_.setTooltip("Choose a new random seed");
+    lockButton_.setTooltip("Lock the current seed and disable re-roll");
+    previewButton_.onClick = [this] { proc_.requestPreview(); };
+    previewButton_.setTooltip("Queue one fill at the next quantized point; it waits until the current fill ends");
+    helpButton_.setTooltip("Open TransitGen control help");
+    helpButton_.onClick = [] {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::MessageBoxIconType::NoIcon, "TransitGen Help",
+            "Choose a trigger mode and fill settings, then shape the Energy Curve. Click the curve to add a point; "
+            "drag a point to move it; Alt-drag a segment to bend it; Shift-drag to snap an interior point to 1/16; "
+            "double-click an interior point to remove it.\n\n"
+            "Re-roll chooses a new seed. Lock keeps the current seed and disables re-roll. The plan lanes show the "
+            "next generated fill. The output meter shows post-effect peak level. Preview queues one fill at the next "
+            "quantized point; it waits for running or scheduled fills to finish. Keyboard: Space previews, R re-rolls, "
+            "L toggles Lock, and Ctrl/Cmd+Z/Y undoes or redoes curve changes. Use your DAW's host bypass control.",
+            "Close", nullptr);
+    };
+    undoButton_.onClick = [this] { curveEditor_.undo(); };
+    redoButton_.onClick = [this] { curveEditor_.redo(); };
+    undoButton_.setTooltip("Undo the last curve edit or preset change");
+    redoButton_.setTooltip("Redo the last undone curve edit or preset change");
+    status_.setFont(juce::FontOptions(15.0f, juce::Font::bold));
+    status_.setName("Fill status");
+    outputMeter_.setName("Output peak meter");
+    outputMeter_.setTooltip("Post-processor peak level with decaying hold");
+    for (juce::Component* c : std::initializer_list<juce::Component*>{ &curveBox_, &rerollButton_, &lockButton_, &previewButton_, &undoButton_, &redoButton_, &helpButton_, &outputMeter_, &status_, &curveEditor_ })
+        addAndMakeVisible(*c);
+
+    setSize(kWidth, 600);
+    setResizable(true, true);
+    setResizeLimits(760, 540, 1920, 1200);
+    setWantsKeyboardFocus(true);
+    timerCallback();
+    startTimerHz(30);
+}
+
+TransitGenEditor::~TransitGenEditor() { stopTimer(); }
+
+void TransitGenEditor::paint(juce::Graphics& g)
+{
+    g.fillAll(ui::background);
+    g.setColour(ui::border);
+    g.drawHorizontalLine(kTopH, static_cast<float>(kMargin), static_cast<float>(getWidth() - kMargin));
+}
+
+void TransitGenEditor::resized()
+{
+    juce::Rectangle<int> area = getLocalBounds().reduced(kMargin);
+    juce::Rectangle<int> top = area.removeFromTop(kTopH);
+    juce::Rectangle<int> buttons = top.removeFromTop(28);
+    curveBox_.setBounds(buttons.removeFromLeft(180));
+    buttons.removeFromLeft(8);
+    rerollButton_.setBounds(buttons.removeFromLeft(90));
+    buttons.removeFromLeft(8);
+    lockButton_.setBounds(buttons.removeFromLeft(70));
+    buttons.removeFromLeft(8);
+    previewButton_.setBounds(buttons.removeFromLeft(90));
+    buttons.removeFromLeft(12);
+    undoButton_.setBounds(buttons.removeFromLeft(54));
+    buttons.removeFromLeft(4);
+    redoButton_.setBounds(buttons.removeFromLeft(54));
+    buttons.removeFromLeft(8);
+    outputMeter_.setBounds(buttons.removeFromRight(220));
+    helpButton_.setBounds(buttons.removeFromRight(64));
+    status_.setBounds(top.reduced(0, 4));
+
+    area.removeFromTop(kMargin / 2);
+    curveEditor_.setBounds(area.removeFromTop(190));
+    area.removeFromTop(kMargin);
+    const int rowsPerCol = (static_cast<int>(rows_.size()) + kColumns - 1) / kColumns;
+    const int colW = area.getWidth() / kColumns;
+    for (size_t i = 0; i < rows_.size(); ++i) {
+        const int col = static_cast<int>(i) / rowsPerCol, r = static_cast<int>(i) % rowsPerCol;
+        juce::Rectangle<int> cell(area.getX() + col * colW, area.getY() + r * kRowH, colW - kMargin, kRowH);
+        rows_[i]->label.setBounds(cell.removeFromLeft(120));
+        rows_[i]->control->setBounds(cell.reduced(4, 2));
+    }
+}
+
+bool TransitGenEditor::keyPressed(const juce::KeyPress& key)
+{
+    const auto modifiers = key.getModifiers();
+    const juce::juce_wchar character = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+    if (modifiers.isCommandDown()) {
+        if (character == 'z') {
+            if (modifiers.isShiftDown()) curveEditor_.redo();
+            else curveEditor_.undo();
+            return true;
+        }
+        if (character == 'y') {
+            curveEditor_.redo();
+            return true;
+        }
+    }
+    if (key.getKeyCode() == juce::KeyPress::spaceKey) {
+        proc_.requestPreview();
+        return true;
+    }
+    if (character == 'r') {
+        proc_.rerollSeed();
+        return true;
+    }
+    if (character == 'l') {
+        proc_.setLocked(!proc_.isLocked());
+        return true;
+    }
+    return false;
+}
+
+void TransitGenEditor::timerCallback()
+{
+    proc_.collectRetired();
+    curveEditor_.repaint();
+    outputMeter_.setPeak(proc_.consumeOutputPeak());
+    undoButton_.setEnabled(curveEditor_.canUndo());
+    redoButton_.setEnabled(curveEditor_.canRedo());
+    status_.setText(statusText(proc_), juce::dontSendNotification);
+
+    const bool locked = proc_.isLocked();
+    lockButton_.setToggleState(locked, juce::dontSendNotification);
+    rerollButton_.setEnabled(!locked);
+    const juce::String preset = proc_.curvePresetName();
+    int id = 0;
+    for (int i = 0; i < static_cast<int>(tg::CurvePreset::kCount); ++i)
+        if (preset == tg::kCurvePresetNames[i]) id = i + 1;
+    if (curveBox_.getSelectedId() != id) curveBox_.setSelectedId(id, juce::dontSendNotification);
+}
+
+juce::String TransitGenEditor::statusText(const TransitGenProcessor& p)
+{
+    const tg::EngineTelemetry& t = p.telemetry();
+    tg::EngineSettings s;
+    p.currentSettings(s);
+    const bool fixed = p.isLocked() || s.variation == tg::Variation::Fixed;
+
+    juce::String text = p.loadedNewerState() ? "Saved with a newer version - some settings were not loaded.  " : "";
+    if (t.fillActive.load(std::memory_order_relaxed)) {
+        return text + "FILL  " + juce::String(juce::roundToInt(t.fillProgress.load(std::memory_order_relaxed) * 100.0f))
+             + "%   seed " + juce::String(t.fillSeed.load(std::memory_order_relaxed));
+    }
+    const juce::String seed = "   seed " + juce::String(s.seed) + (fixed ? "" : " (per phrase)");
+    if (s.mode == tg::TriggerMode::Automation) return text + "waiting for trigger" + seed;
+    if (s.mode == tg::TriggerMode::Midi) return text + "waiting for MIDI" + seed;
+
+    // Auto-Phrase countdown, mirroring FillScheduler::autoPhrase (02 §2).
+    const double barLen = p.lastBarLength(), beat = t.beat.load(std::memory_order_relaxed);
+    const double P = s.phraseBars * barLen;
+    const double o = p.lastGridOrigin() + s.phraseOffset * barLen;
+    const double Lf = std::min(tg::fillLengthBeats(s.fillLen, barLen), P);
+    double start = o + (std::floor((beat - o) / P) + 1.0) * P - Lf;
+    if (start <= beat) start += P;
+    const double until = start - beat;
+    const int bars = static_cast<int>(std::floor(until / barLen));
+    const juce::String when = (bars > 0 ? juce::String(bars) + (bars == 1 ? " bar " : " bars ") : juce::String())
+                            + juce::String(until - bars * barLen, 1) + " beats";
+    const juce::String transport = t.playing.load(std::memory_order_relaxed) ? "" : "  (stopped)";
+    return text + "next fill in " + when + transport + seed;
+}
+
+} // namespace tgp
