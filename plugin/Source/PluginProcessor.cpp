@@ -107,7 +107,8 @@ void TransitGenProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
     if (previewRequested_.exchange(false, std::memory_order_acquire) && !previewActive_ && !previewWaiting_)
         previewWaiting_ = true;
-    if (previewWaiting_ && !engine_.telemetry().fillActive.load(std::memory_order_relaxed)) {
+    if (previewWaiting_ && !engine_.telemetry().fillActive.load(std::memory_order_relaxed)
+        && !engine_.hasPendingTrigger()) {
         previewWaiting_ = false;
         previewActive_ = true;
         previewArming_ = true;

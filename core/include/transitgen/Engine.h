@@ -26,6 +26,7 @@ public:
     const EngineTelemetry& telemetry() const noexcept { return telemetry_; }
     const CaptureBuffer&   capture() const noexcept { return capture_; }
     bool                   fillActive() const noexcept { return player_.active(); }
+    bool                   hasPendingTrigger() const noexcept { return scheduler_.hasPending(); }
     int64_t                engineTime() const noexcept { return tracker_.engineTime(); }
 
 private:
