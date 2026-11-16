@@ -6,4 +6,4 @@ The intended behaviour, from the README: draw an energy curve, choose a genre st
 generates a tempo-synced glitch fill or transition. Each fill has a seed, so it can be locked, re-rolled, and
 reproduced on every playback.
 
-No source code exists yet, so there is no build, user or developer guide. Add pages when the code is committed.
+The implementation is under review in [pull request 1](https://github.com/djshellshoxxx/TransitGen/pull/1). Refer to that branch for its current build and test instructions.

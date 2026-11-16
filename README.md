@@ -6,7 +6,7 @@ Draw an energy curve, pick a genre style and a length, and TransitGen generates 
 
 ## Status
 
-This repository currently contains only this README. No source code, build files or tests have been committed, so the plugin cannot be built or run from this repository yet. The description above is the only published specification.
+The default branch contains the project description and shared development tooling. The implementation, build files and tests are under review in [pull request 1](https://github.com/djshellshoxxx/TransitGen/pull/1).
 
 ## Licence
 
