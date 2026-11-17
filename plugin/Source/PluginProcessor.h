@@ -99,6 +99,7 @@ private:
 
     // Audio thread
     std::array<tg::MidiEvent, kMaxMidiEventsPerBlock> midiScratch_{};
+    double                                            preparedSampleRate_ = 0.0;
     int                                               preparedBlock_ = 0;
     std::atomic<bool>                                 wasBypassed_{ false };
     std::atomic<float>                                outputPeak_{ 0.0f };

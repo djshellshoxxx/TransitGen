@@ -77,6 +77,7 @@ bool TransitGenProcessor::isBusesLayoutSupported(const BusesLayout& layouts) con
 
 void TransitGenProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    preparedSampleRate_ = sampleRate;
     preparedBlock_ = std::max(1, samplesPerBlock);
     engine_.prepare(sampleRate, preparedBlock_, tg::kMaxChannels);   // fixed channel count: layout changes need no realloc
     wasBypassed_.store(false, std::memory_order_relaxed);
@@ -114,7 +115,7 @@ void TransitGenProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
         previewArming_ = true;
         previewFillStarted_ = false;
         previewStartFillCount_ = engine_.telemetry().fillCount.load(std::memory_order_relaxed);
-        previewStartTimeoutSamples_ = static_cast<int64_t>(std::lround(getSampleRate() * 30.0));
+        previewStartTimeoutSamples_ = static_cast<int64_t>(std::llround(preparedSampleRate_ * 30.0));
     }
 
     // Parameters and published objects: once per block (01 §7). The curve/style pointers feed GenSettings.
@@ -166,7 +167,6 @@ void TransitGenProcessor::processChunked(juce::AudioBuffer<float>& buffer, int n
     // Hosts may exceed the prepared block size: split, advancing the position between chunks.
     const int total = buffer.getNumSamples();
     float* const* data = buffer.getArrayOfWritePointers();
-    const double sr = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
     int m0 = 0;
     for (int start = 0; start < total;) {
         const int n = std::min(preparedBlock_, total - start);
@@ -179,7 +179,7 @@ void TransitGenProcessor::processChunked(juce::AudioBuffer<float>& buffer, int n
         }
         const tg::MidiEventView view{ m1 > m0 ? &midiScratch_[static_cast<size_t>(m0)] : nullptr, m1 - m0 };
         engine_.process(ch, numChannels, n, ti, view);
-        if (ti.hasPpq && ti.bpm > 0.0 && ti.playing) ti.ppq += n * ti.bpm / (60.0 * sr);
+        if (ti.hasPpq && ti.bpm > 0.0 && ti.playing) ti.ppq += n * ti.bpm / (60.0 * preparedSampleRate_);
         m0 = m1;
         start += n;
     }
